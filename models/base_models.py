@@ -43,7 +43,7 @@ def get_model(name):
     inputs = image_processor(images=image, return_tensors="pt")
     outputs = model(**inputs)
     last_hidden_states = outputs.last_hidden_state
-    breakpoint()
+    # breakpoint()
 
     # model = torchvision.models.alexnet(pretrained=True)
     preprocessing = functools.partial(load_preprocess_images, image_size=224)
@@ -65,7 +65,8 @@ def get_layers(name):
     :param name: the name of the model, to return the layers for
     :return: a list of strings containing all layers, that should be considered as brain area.
     """
-    return ['embeddings.patch_embeddings.projection', ]
+    # breakpoint()
+    return ['embeddings.patch_embeddings.projection', 'encoder.layer.0.layernorm_after']
 
 
 def get_bibtex(model_identifier):
