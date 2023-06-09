@@ -6,6 +6,10 @@ import torchvision.models
 from model_tools.activations.pytorch import PytorchWrapper
 from model_tools.activations.pytorch import load_preprocess_images
 
+from transformers import AutoImageProcessor, ViTMAEModel
+from PIL import Image
+import requests
+
 """
 Template module for a base model submission to brain-score
 """
@@ -19,7 +23,7 @@ def get_model_list():
     :return: a list of model string names
     """
     
-    return ['mae-vitb16', 'mae-vitl16', ]
+    return ['mae-vitb16', 'mae-vitl16'] # 'videomae-vitb16-videoinput'
     # ['mae-vitb16', 'videomae', 'dino', 'clip', 'vc-1', 'vip', 'vit', 'timesformer', 'deit', 'sam', 'dpt', 'cvt']
 
 
@@ -32,15 +36,8 @@ def get_model(name):
     :param name: the name of the model to fetch
     :return: the model instance
     """
-    if 'mae' in name:
-        from transformers import AutoImageProcessor, ViTMAEModel
-        from PIL import Image
-        import requests
-        
-        # url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-        # image = Image.open(requests.get(url, stream=True).raw)
-
-        # image_processor = AutoImageProcessor.from_pretrained("facebook/vit-mae-base")
+    model_name = name.split('-')[0]
+    if model_name == 'mae':
         if 'vitb' in name:
             model = ViTMAEModel.from_pretrained("facebook/vit-mae-base")
         elif 'vitl' in name:
@@ -48,13 +45,29 @@ def get_model(name):
         else:
             raise NotImplementedError(f'unknown model for getting model {name}')
 
-        # inputs = image_processor(images=image, return_tensors="pt")
-        # outputs = model(**inputs)
-        # last_hidden_states = outputs.last_hidden_state
+        url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+        image = Image.open(requests.get(url, stream=True).raw)
+        image_processor = AutoImageProcessor.from_pretrained("facebook/vit-mae-base")
+        inputs = image_processor(images=image, return_tensors="pt")
+        outputs = model(**inputs)
+        last_hidden_states = outputs.last_hidden_state
+
+        breakpoint()
 
         preprocessing = functools.partial(load_preprocess_images, image_size=224)
         wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
         wrapper.image_size = 224
+        
+    elif model_name == 'videomae':
+        if name.split('-')[-1] == 'videoinput':
+            preprocessing = functools.partial(load_preprocess_images, image_size=224)
+            preprocessing = lambda x: preprocessing(x).unsqueeze(0).repeat(12, 1, 1, 1)
+
+        else:
+            raise NotImplementedError(f'unknown model for getting model {name}')
+
+    else:
+        raise NotImplementedError(f'unknown model for getting model {name}')
 
     return wrapper
 
@@ -69,10 +82,11 @@ def get_layers(name):
     :param name: the name of the model, to return the layers for
     :return: a list of strings containing all layers, that should be considered as brain area.
     """
-
-    if 'vitb' in name:
+    model_backbone = name.split('-')[1]
+    breakpoint()
+    if 'vitb' in model_backbone:
         layers = ['embeddings.patch_embeddings.projection', 'encoder.layer.0.layernorm_after']
-    elif 'vitl' in name:
+    elif 'vitl' in model_backbone:
         layers = ['embeddings.patch_embeddings.projection', 'encoder.layer.0.layernorm_after']
     else:
         raise NotImplementedError(f'unknown model for getting layers {name}')
