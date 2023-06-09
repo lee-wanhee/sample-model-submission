@@ -24,7 +24,7 @@ def get_model_list():
     :return: a list of model string names
     """
     
-    return ['mae-vitb16-debug',  'mae-vitl16-debug'] # 'videomae-vitb16-videoinput'
+    return ['mae-vitb16-debug', 'mae-vitl16-debug'] # 'videomae-vitb16-videoinput'
     # ['mae-vitb16', 'videomae', 'dino', 'clip', 'vc-1', 'vip', 'vit', 'timesformer', 'deit', 'sam', 'dpt', 'cvt']
 
 
@@ -89,7 +89,7 @@ def get_layers(name):
     if 'vitb' in model_backbone: # 11
         layers = ['encoder.layer.1.output', 'encoder.layer.1.layernorm_before', 'encoder.layer.2.output'] # 'embeddings.patch_embeddings.projection', 
     elif 'vitl' in model_backbone: # 23
-        layers = ['encoder.layer.1.output', 'encoder.layer.1.layernorm_before', 'encoder.layer.2.output'] # 'embeddings.patch_embeddings.projection',
+        layers = ['encoder.layer.1.output']
     else:
         raise NotImplementedError(f'unknown model for getting layers {name}')
 

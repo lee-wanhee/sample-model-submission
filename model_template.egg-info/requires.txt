@@ -1,0 +1,4 @@
+model-tools@ git+https://github.com/brain-score/model-tools
+torch
+torchvision
+transformers

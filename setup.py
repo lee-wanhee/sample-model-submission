@@ -4,7 +4,10 @@
 from setuptools import setup, find_packages
 
 requirements = [
-    "model-tools @ git+https://github.com/brain-score/model-tools"
+    "model-tools @ git+https://github.com/brain-score/model-tools",
+    "torch",
+    "torchvision",
+    "transformers",
 ]
 
 setup(
