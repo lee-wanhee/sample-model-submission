@@ -71,7 +71,7 @@ def get_model_list():
     """
     
     # return ['mae_vitb16_1',  'mae_vitl16_1'] # 'videomae-vitb16-videoinput' 0: layer[1, 12) / 1: layer[0, 12)
-    return ['dinov1_vits8_1', 'dinov1_vits16_1', 'dinov1_vits8_1', 'dinov1_vitb16_1', 'dinov1_vitb8_1'] #,  #, 'dino_resnet-50_0']
+    return ['dinov1_vits16_1', 'dinov1_vits8_1', 'dinov1_vitb16_1', 'dinov1_vitb8_1'] #,  #, 'dino_resnet-50_0']
     # ['mae-vitb16', 'videomae', 'dino', 'clip', 'vc-1', 'vip', 'vit', 'timesformer', 'deit', 'sam', 'dpt', 'cvt']
 
 
