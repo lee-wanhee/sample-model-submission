@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 requirements = [
-    "model-tools @ git+https://github.com/lee-wanhee/model-tools.git@huggingface"",
+    "model-tools @ git+https://github.com/lee-wanhee/model-tools.git@huggingface",
     "torch",
     "torchvision",
     "transformers",

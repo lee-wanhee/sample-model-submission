@@ -34,10 +34,10 @@ def get_model_list():
     :return: a list of model string names
     """
     ## submit version 
-    # 0: layer[1, 12) / 1: layer[0, 12) / 2: original model's preprocessor
+    # 0: layer[1, 12) / 1: layer[0, 12) / 2: original model's preprocessor, change model_tools
     submit_version = 2
     ## model list
-    # model_list = ['mae_vitb16']
+    model_list = ['mae_vitb16']
     # model_list = ['mae_vitl16']
     # model_list = ['dinov1_vits16']
     # model_list = ['dinov1_vits8']
@@ -50,7 +50,7 @@ def get_model_list():
     # model_list = ['vit_vitb16_in21k']
     # model_list = ['vit_vitl16']
     # model_list = ['vit_vitl16_in21k']
-    model_list = ['videomae_vitb16_videoinput']
+    # model_list = ['videomae_vitb16_videoinput']
     # model_list = ['videomae_vitl16_videoinput']
     # model_list = ['videomae_vitb16_videoinput_finetuned-kinetics']
     # model_list = ['videomae_vitb16_videoinput_finetuned-ssv2']
@@ -223,8 +223,6 @@ def get_model(name):
     wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
     wrapper.image_size = 224
 
-    breakpoint()
-
     return wrapper
 
 
@@ -246,38 +244,39 @@ def get_layers(name):
     layers = []
     if 'clip_vitb' in name:
         for i in range(12):
-            layers.append(f'encoder.layers.{i}.mlp')
-            layers.append(f'encoder.layers.{i}.layer_norm1')
+            # layers.append(f'encoder.layers.{i}.mlp')
+            # layers.append(f'encoder.layers.{i}.layer_norm1')
+            layers.append(f'encoder.layers.{i}')
         # layers.append('post_layernorm') --> KeyError: 'embedding'
+        layers.append('encoder')
     elif 'clip_vitl' in name:
         for i in range(24):
-            layers.append(f'encoder.layers.{i}.mlp')
-            layers.append(f'encoder.layers.{i}.layer_norm1')
+            layers.append(f'encoder.layers.{i}')
+        layers.append('encoder')
     elif 'timesformer_vitb' in name:
         for i in range(12):
-            layers.append(f'timesformer.encoder.layer.{i}.layernorm_before')
-            layers.append(f'timesformer.encoder.layer.{i}.output')
+            layers.append(f'timesformer.encoder.layer.{i}') # .layernorm_before')
         # layers.append('timesformer.layernorm')
         # layers.append('classifier')
     elif 'timesformer_vitl' in name:
         for i in range(24):
-            layers.append(f'timesformer.encoder.layer.{i}.layernorm_before')
-            layers.append(f'timesformer.encoder.layer.{i}.output')
-        # layers.append('timesformer.layernorm')
-        # layers.append('classifier')
+            layers.append(f'timesformer.encoder.layer.{i}')
     elif 'vits' in model_backbone:
         for i in range(12): # 12
-            layers.append(f'encoder.layer.{i}.output')
+            layers.append(f'encoder.layer.{i}')
+        layers.append('encoder')
         layers.append('layernorm')
     elif 'vitb' in model_backbone:
         for i in range(12): # 12
-            layers.append(f'encoder.layer.{i}.output')
+            layers.append(f'encoder.layer.{i}')
+        layers.append('encoder')
         layers.append('layernorm')
     elif 'vitl' in model_backbone:
         for i in range(24): # 24
-            layers.append(f'encoder.layer.{i}.output')
+            layers.append(f'encoder.layer.{i}')
+        layers.append('encoder')
         layers.append('layernorm')
-    elif 'dinov1_resnet-50' in model_backbone:
+    elif 'dinov1_resnet-50' in name:
         layers = []
         layers += ['embedder.pooler']
         layers += [f'encoder.stages.0.layers.{i}' for i in range(3)]

@@ -1,4 +1,4 @@
-model-tools@ git+https://github.com/brain-score/model-tools
+model-tools@ git+https://github.com/lee-wanhee/model-tools.git@huggingface
 torch
 torchvision
 transformers
