@@ -4,11 +4,12 @@
 from setuptools import setup, find_packages
 
 requirements = [
-    "model-tools @ git+https://github.com/brain-score/model-tools",
+    "model-tools @ git+https://github.com/lee-wanhee/model-tools.git@huggingface"",
     "torch",
     "torchvision",
     "transformers",
 ]
+# "model-tools @ git+https://github.com/brain-score/model-tools.git@huggingface"",
 
 setup(
     name='model-template',
