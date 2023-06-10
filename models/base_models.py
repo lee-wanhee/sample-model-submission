@@ -15,6 +15,9 @@ from transformers import AutoImageProcessor, VideoMAEModel
 from transformers import AutoImageProcessor, TimesformerForVideoClassification
 from transformers import ViTImageProcessor, ViTForImageClassification
 from transformers import CLIPProcessor, CLIPModel
+from transformers import AutoFeatureExtractor, CvtForImageClassification
+from transformers import ConvNextFeatureExtractor, ConvNextForImageClassification
+from transformers import LevitFeatureExtractor, LevitForImageClassificationWithTeacher
 from huggingface_hub import hf_hub_download
 from PIL import Image
 import requests
@@ -35,15 +38,16 @@ def get_model_list():
     """
     ## submit version 
     # 0: layer[1, 12) / 1: layer[0, 12) / 2: original model's preprocessor, change model_tools
-    submit_version = 2
+    # 3: conv-like models, add layers to dinov1-resnet50
+    submit_version = 3
     ## model list
-    model_list = ['mae_vitb16']
+    # model_list = ['mae_vitb16']
     # model_list = ['mae_vitl16']
     # model_list = ['dinov1_vits16']
     # model_list = ['dinov1_vits8']
     # model_list = ['dinov1_vitb16']
     # model_list = ['dinov1_vitb8']
-    # model_list = ['dinov1_resnet-50_Ramos-Ramos']
+    # model_list = ['dinov1_resnet-50_Ramos-Ramos'] # has version 3
     # model_list = ['clip_vitb16']
     # model_list = ['clip_vitl14']
     # model_list = ['vit_vitb16']
@@ -57,6 +61,13 @@ def get_model_list():
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k400']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k600']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-ssv2']
+    model_list = ['cvt_cvt-13-224']
+    # model_list = ['cvt_cvt-21-224']
+    # model_list = ['convnext_convnext-tiny-224']
+    # model_list = ['convnext_convnext-base-224']
+    # model_list = ['convnext_convnext-large-224']
+    # model_list = ['levit_levit-128s']
+    # model_list = ['levit_levit-256']
     
     return [model+'_'+str(submit_version) for model in model_list]
     
@@ -216,12 +227,44 @@ def get_model(name):
         else:
             raise NotImplementedError(f'unknown model for getting model {name}')
 
+    elif model_name == 'cvt':
+        # https://huggingface.co/models?sort=downloads&search=cvt
+        if 'cvt-13-224' in name:
+            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-13')
+            model = CvtForImageClassification.from_pretrained('microsoft/cvt-13')
+        elif 'cvt-21-224' in name:
+            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-13')
+            model = CvtForImageClassification.from_pretrained('microsoft/cvt-13')
+
+    elif model_name == 'convnext':
+        # https://huggingface.co/models?search=facebook/convnext
+        if 'convnext-large-224' in name:
+            processor = ConvNextFeatureExtractor.from_pretrained("facebook/convnext-large-224")
+            model = ConvNextForImageClassification.from_pretrained("facebook/convnext-large-224")
+        elif 'convnext-base-224' in name:
+            processor = ConvNextFeatureExtractor.from_pretrained("facebook/convnext-base-224")
+            model = ConvNextForImageClassification.from_pretrained("facebook/convnext-base-224")
+        elif 'convnext-tiny-224' in name:
+            processor = ConvNextFeatureExtractor.from_pretrained("facebook/convnext-tiny-224")
+            model = ConvNextForImageClassification.from_pretrained("facebook/convnext-tiny-224")
+
+    elif model_name == 'levit':
+        # https://huggingface.co/models?search=facebook/levit
+        if 'levit-128s' in name:
+            processor = LevitFeatureExtractor.from_pretrained('facebook/levit-128S')
+            model = LevitForImageClassificationWithTeacher.from_pretrained('facebook/levit-128S')
+        elif 'levit-256' in name:
+            processor = LevitFeatureExtractor.from_pretrained('facebook/levit-256')
+            model = LevitForImageClassificationWithTeacher.from_pretrained('facebook/levit-256')
+
     else:
         raise NotImplementedError(f'unknown model for getting model {name}')
 
     preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=224)
     wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
     wrapper.image_size = 224
+
+    # breakpoint()
 
     return wrapper
 
@@ -277,12 +320,69 @@ def get_layers(name):
         layers.append('encoder')
         layers.append('layernorm')
     elif 'dinov1_resnet-50' in name:
-        layers = []
         layers += ['embedder.pooler']
         layers += [f'encoder.stages.0.layers.{i}' for i in range(3)]
         layers += [f'encoder.stages.1.layers.{i}' for i in range(3)]
         layers += [f'encoder.stages.2.layers.{i}' for i in range(6)]
         layers += [f'encoder.stages.3.layers.{i}' for i in range(3)]
+        # added in version 3
+        layers += [f'encoder.stages.{i}']
+    elif 'cvt-13' in name:
+        layers += ['cvt.encoder.stages.0.layers.0']
+        layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
+        layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+        layers += ['layernorm']
+        # layers += ['classifier'] --> 'embedding' error
+    elif 'cvt-21' in name:
+        # layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+        layers += ['cvt.encoder.stages.0.layers.0']
+        layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
+        layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+        layers += ['layernorm']
+    elif 'convnext-tiny-224' in name:
+        layers += ['convnext.embeddings']
+        layers += [f'convnext.encoder.stages.0.layers.{i}' for i in range(3)]
+        layers += [f'convnext.encoder.stages.1.layers.{i}' for i in range(3)]
+        # layers += [f'convnext.encoder.stages.2.layers.{i}' in range(9)]
+        layers += [f'convnext.encoder.stages.2.layers.{i*2}' for i in range(5)]
+        layers += [f'convnext.encoder.stages.3.layers.{i}' for i in range(3)]
+        layers += [f'convnext.encoder.stages.{i}' for i in range(4)]
+        layers += ['convnext.layernorm']
+        layers += ['classifier']
+    elif 'convnext-base-224' in name:
+        layers += ['convnext.embeddings']
+        layers += [f'convnext.encoder.stages.0.layers.{i}' for i in range(3)]
+        layers += [f'convnext.encoder.stages.1.layers.{i}' for i in range(3)]
+        # layers += [f'convnext.encoder.stages.2.layers.{i}' for i in range(27)]
+        layers += [f'convnext.encoder.stages.2.layers.{i*2}' for i in range(14)]
+        layers += [f'convnext.encoder.stages.3.layers.{i}' for i in range(3)]
+        layers += [f'convnext.encoder.stages.{i}' for i in range(4)]
+        layers += ['convnext.layernorm']
+        layers += ['classifier']
+    elif 'convnext-large-224' in name:
+        layers += ['convnext.embeddings']
+        layers += [f'convnext.encoder.stages.0.layers.{i}' for i in range(3)]
+        layers += [f'convnext.encoder.stages.1.layers.{i}' for i in range(3)]
+        # layers += [f'convnext.encoder.stages.2.layers.{i}' for i in range(27)]
+        layers += [f'convnext.encoder.stages.2.layers.{i*2}' for i in range(14)]
+        layers += [f'convnext.encoder.stages.3.layers.{i}' for i in range(3)]
+        layers += [f'convnext.encoder.stages.{i}' for i in range(4)]
+        layers += ['convnext.layernorm']
+        layers += ['classifier']
+    elif 'levit-128s' in name:
+        layers += ['levit.patch_embeddings']
+        layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(6)]
+        layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(8)]
+        layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
+        layers += [f'levit.encoder.stages.{i}' for i in range(3)]
+        # layers += ['classifier', 'classifier_distill']
+    elif 'levit-256' in name:
+        layers += ['levit.patch_embeddings']
+        layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(10)]
+        layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(10)]
+        layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
+        layers += [f'levit.encoder.stages.{i}' for i in range(3)]
+        # layers += ['classifier', 'classifier_distill']
     else:
         raise NotImplementedError(f'unknown model for getting layers {name}')
 

@@ -9,6 +9,7 @@ requirements = [
     "torchvision",
     "transformers",
 ]
+# datasets
 # "model-tools @ git+https://github.com/brain-score/model-tools.git@huggingface"",
 
 setup(
