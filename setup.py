@@ -10,6 +10,7 @@ requirements = [
     "transformers",
 ]
 # datasets
+# "vc_models @ git+https://github.com/facebookresearch/eai-vc.git",
 # "model-tools @ git+https://github.com/brain-score/model-tools.git@huggingface"",
 
 setup(
