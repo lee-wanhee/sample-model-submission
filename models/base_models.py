@@ -67,7 +67,13 @@ def get_model_list():
     # model_list = ['convnext_convnext-base-224']
     # model_list = ['convnext_convnext-large-224']
     # model_list = ['levit_levit-128s']
-    model_list = ['levit_levit-256']
+    # model_list = ['levit_levit-256']
+    # model_list = ['vc1_vc1b']
+    # model_list = ['vc1_vc1l']
+    # model_list = ['vip_vip']
+    # model_list = ['r3m_resnet50'] # ['r3m_resnet18', 'r3m_resnet34'] do not have public link
+    # model_list = ['r3m_resnet50_custom']
+    model_list = ['r3m_resnet50_custom-ego4d']
     
     return [model+'_'+str(submit_version) for model in model_list]
     
@@ -129,8 +135,6 @@ def get_model(name):
         # outputs = model(**inputs)
         # last_hidden_states = outputs.last_hidden_state
 
-        # breakpoint()
-    
     elif model_name == 'dinov1':
         # https://huggingface.co/facebook/dino-vitb16
         # https://huggingface.co/facebook/dino-vitb8
@@ -257,6 +261,117 @@ def get_model(name):
             processor = LevitFeatureExtractor.from_pretrained('facebook/levit-256')
             model = LevitForImageClassificationWithTeacher.from_pretrained('facebook/levit-256')
 
+    elif model_name == 'vc1':
+        # https://github.com/facebookresearch/eai-vc/blob/main/tutorial/tutorial_vc.ipynb
+        from vc_models.models.vit import model_utils
+        if "vc1b" in name:
+            model, embd_size, model_transforms, model_info = model_utils.load_model(model_utils.VC1_BASE_NAME)
+        elif "vc1l" in name:
+            model, embd_size, model_transforms, model_info = model_utils.load_model(model_utils.VC1_LARGE_NAME)
+        # img_transform = torchvision.transforms.ToTensor()
+        # img = img_transform(orig_img)
+        # img = img.unsqueeze(0)
+        # transformed_img = model_transforms(img)
+
+        def vc1_processor(images=None, return_tensors="pt", image_processor=None):
+            img_transform = torchvision.transforms.ToTensor()
+            img = img_transform(images)
+            img = img.unsqueeze(0)
+            img = image_processor(img)
+            inputs = {'pixel_values': img}
+            return inputs
+        
+        processor = functools.partial(vc1_processor, return_tensors="pt", image_processor=model_transforms)
+
+        preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=250)
+        wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
+        wrapper.image_size = 250
+
+        return wrapper
+
+    elif model_name == 'vip':
+        # https://github.com/facebookresearch/vip/blob/676d24ce08e76475595c9a0167d1fdfdd1da5624/vip/models/model_vip.py#L55
+        # https://github.com/facebookresearch/vip/blob/main/vip/examples/encoder_example.py
+        import torchvision.transforms as T
+        from vip import load_vip
+        model = load_vip()
+        model = model.module
+        
+        image_processor = T.Compose([T.Resize(256),
+                                T.CenterCrop(224),
+                                T.ToTensor()]) # ToTensor() divides by 255
+
+        def vip_processor(images=None, return_tensors='pt', image_processor=None):
+            images = image_processor(images)
+            images = images.unsqueeze(0)
+            images *= 255.0 # vip expects image input to be [0-255]
+            inputs = {'pixel_values': images}
+            return inputs
+        
+        processor = functools.partial(vip_processor, image_processor=image_processor)
+        
+        preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=256)
+        wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
+        wrapper.image_size = 256
+
+        return wrapper
+
+    elif model_name == 'r3m':
+        
+        from r3m import load_r3m
+        import torchvision.transforms as T
+        from collections import OrderedDict
+        if "resnet50" in name:
+            r3m = load_r3m("resnet50")
+        elif "resnet18" in name:
+            r3m = load_r3m("resnet18")
+        elif "resnet34" in name:
+            r3m = load_r3m("resnet34")
+
+        model = r3m
+        model = model.module
+
+        # https://github.com/thekej/phys_readouts/blob/main/models/R3M/r3m_model.py
+        
+        if "resnet50_custom-ego4d" in name:
+            model_path = "./checkpoints/r3m_custom-ego4d.pth"
+        elif "resnet50_custom" in name:
+            model_path = "./checkpoints/r3m_custom.pth"
+        params = torch.load(model_path, map_location="cpu")
+        sd = params
+        new_sd = OrderedDict()
+        for k, v in sd.items():
+            if k.startswith("module.") and 'r3m' in k:
+                name = k[19:]
+                # name = 'encoder.r3m.module.' + k[19:]  # remove 'module.' of dataparallel/DDP
+            elif k.startswith("module.") and 'dynamics' in k:
+                name = k[7:]
+            else:
+                name = k
+            new_sd[name] = v
+        loaded = model.load_state_dict(new_sd, strict=False)
+
+        image_processor = T.Compose([T.Resize(256),
+                                T.CenterCrop(224),
+                                T.ToTensor()]) # ToTensor() divides by 255
+
+        def vip_processor(images=None, return_tensors='pt', image_processor=None):
+            images = image_processor(images)
+            images = images.unsqueeze(0)
+            images *= 255.0 # vip expects image input to be [0-255]
+            inputs = {'pixel_values': images}
+            return inputs
+        
+        processor = functools.partial(vip_processor, image_processor=image_processor)
+        
+        preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=256)
+        wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
+        wrapper.image_size = 256
+
+        return wrapper
+        
+
+
     else:
         raise NotImplementedError(f'unknown model for getting model {name}')
 
@@ -264,7 +379,6 @@ def get_model(name):
     wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
     wrapper.image_size = 224
 
-    # breakpoint()
 
     return wrapper
 
@@ -326,7 +440,7 @@ def get_layers(name):
         layers += [f'encoder.stages.2.layers.{i}' for i in range(6)]
         layers += [f'encoder.stages.3.layers.{i}' for i in range(3)]
         # added in version 3
-        layers += [f'encoder.stages.{i}']
+        layers += [f'encoder.stages.{i}' for i in range(4)]
     elif 'cvt-13' in name:
         layers += ['cvt.encoder.stages.0.layers.0']
         layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
@@ -383,6 +497,42 @@ def get_layers(name):
         layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
         layers += [f'levit.encoder.stages.{i}' for i in range(3)]
         # layers += ['classifier', 'classifier_distill']
+    elif 'vc1b' in name:
+        layers += [f'blocks.{i}' for i in range(12)]
+        layers += ['blocks']
+        # layers += ['fc_norm']
+    elif 'vc1l' in name:
+        layers += [f'blocks.{i}' for i in range(24)]
+        layers += ['blocks']
+        # layers += ['fc_norm']
+    elif 'vip' in name:
+        layers += ['convnet.maxpool', 'convnet.avgpool']
+        layers += [f'convnet.layer1.{i}' for i in range(3)]
+        layers += [f'convnet.layer2.{i}' for i in range(3)]
+        layers += [f'convnet.layer3.{i}' for i in range(6)]
+        layers += [f'convnet.layer4.{i}' for i in range(3)]
+        layers += [f'convnet.layer{i+1}' for i in range(4)]
+    elif 'r3m_resnet50':
+        layers += ['convnet.maxpool', 'convnet.avgpool']
+        layers += [f'convnet.layer1.{i}' for i in range(3)]
+        layers += [f'convnet.layer2.{i}' for i in range(3)]
+        layers += [f'convnet.layer3.{i}' for i in range(6)]
+        layers += [f'convnet.layer4.{i}' for i in range(3)]
+        layers += [f'convnet.layer{i+1}' for i in range(4)]
+    elif 'r3m_resnet34':
+        layers += ['convnet.maxpool', 'convnet.avgpool']
+        layers += [f'convnet.layer1.{i}' for i in range(3)]
+        layers += [f'convnet.layer2.{i}' for i in range(3)]
+        layers += [f'convnet.layer3.{i}' for i in range(6)]
+        layers += [f'convnet.layer4.{i}' for i in range(3)]
+        layers += [f'convnet.layer{i+1}' for i in range(4)]
+    elif 'r3m_resnet18':
+        layers += ['convnet.maxpool', 'convnet.avgpool']
+        layers += [f'convnet.layer1.{i}' for i in range(3)]
+        layers += [f'convnet.layer2.{i}' for i in range(3)]
+        layers += [f'convnet.layer3.{i}' for i in range(6)]
+        layers += [f'convnet.layer4.{i}' for i in range(3)]
+        layers += [f'convnet.layer{i+1}' for i in range(4)]
     else:
         raise NotImplementedError(f'unknown model for getting layers {name}')
 
