@@ -67,7 +67,8 @@ def get_model_list():
     # model_list = ['convnext_convnext-base-224']
     # model_list = ['convnext_convnext-large-224']
     # model_list = ['levit_levit-128s']
-    model_list = ['levit_levit-256']
+    # model_list = ['levit_levit-256']
+    model_list = ['resnet50']
     
     return [model+'_'+str(submit_version) for model in model_list]
     
