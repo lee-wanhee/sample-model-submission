@@ -47,7 +47,7 @@ def get_model_list():
     # model_list = ['dinov1_vits8']
     # model_list = ['dinov1_vitb16']
     # model_list = ['dinov1_vitb8']
-    # model_list = ['dinov1_resnet-50_Ramos-Ramos'] # has version 3
+    # model_list = ['dinov1_resnet-50_Ramos-Ramos'] # has version 3, but not submitted
     # model_list = ['clip_vitb16']
     # model_list = ['clip_vitl14']
     # model_list = ['vit_vitb16']
@@ -61,13 +61,13 @@ def get_model_list():
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k400']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k600']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-ssv2']
-    model_list = ['cvt_cvt-13-224']
+    # model_list = ['cvt_cvt-13-224']
     # model_list = ['cvt_cvt-21-224']
     # model_list = ['convnext_convnext-tiny-224']
     # model_list = ['convnext_convnext-base-224']
     # model_list = ['convnext_convnext-large-224']
     # model_list = ['levit_levit-128s']
-    # model_list = ['levit_levit-256']
+    model_list = ['levit_levit-256']
     
     return [model+'_'+str(submit_version) for model in model_list]
     
