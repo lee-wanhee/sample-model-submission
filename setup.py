@@ -8,10 +8,11 @@ requirements = [
     "torch==1.13.1",
     "torchvision==0.14.1",
     "transformers",
-    "vc_models @ git+https://github.com/facebookresearch/eai-vc.git#subdirectory=vc_models", # "torch >= 1.10.2", "torchvision >= 0.11.3",
-    "vip @ git+https://github.com/lee-wanhee/vip.git", # 'torch>=1.7.1', 'torchvision>=0.8.2'
-    "r3m @ git+https://github.com/lee-wanhee/r3m.git", # torch>=1.7.1', 'torchvision>=0.8.2',
 ]
+    # "vc_models @ git+https://github.com/facebookresearch/eai-vc.git#subdirectory=vc_models", # "torch >= 1.10.2", "torchvision >= 0.11.3",
+    # "vip @ git+https://github.com/lee-wanhee/vip.git", # 'torch>=1.7.1', 'torchvision>=0.8.2'
+    # "r3m @ git+https://github.com/lee-wanhee/r3m.git", # torch>=1.7.1', 'torchvision>=0.8.2',
+
 # ,
 # datasets
 # "model-tools @ git+https://github.com/brain-score/model-tools.git@huggingface"",
