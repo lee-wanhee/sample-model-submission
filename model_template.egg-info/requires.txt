@@ -2,6 +2,3 @@ model-tools@ git+https://github.com/lee-wanhee/model-tools.git@huggingface
 torch==1.13.1
 torchvision==0.14.1
 transformers
-vc_models@ git+https://github.com/facebookresearch/eai-vc.git#subdirectory=vc_models
-vip@ git+https://github.com/lee-wanhee/vip.git
-r3m@ git+https://github.com/lee-wanhee/r3m.git

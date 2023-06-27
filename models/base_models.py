@@ -62,8 +62,8 @@ def get_model_list():
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k400']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k600']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-ssv2']
-    model_list = ['cvt_cvt-13-224-1k']
-    # model_list = ['cvt_cvt-21-224-1k']
+    model_list = ['cvt_cvt-13-224-in1k']
+    # model_list = ['cvt_cvt-21-224-in1k']
     # model_list = ['cvt_cvt-13-384-in1k']
     # model_list = ['cvt_cvt-21-384-in1k']
     # model_list = ['cvt_cvt-13-384-in22k_finetuned-in1k']
@@ -307,7 +307,7 @@ def get_model(name):
             img = image_processor(img)
             inputs = {'pixel_values': img}
             return inputs
-        
+
         processor = functools.partial(vc1_processor, return_tensors="pt", image_processor=model_transforms)
 
         preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=250)
@@ -404,6 +404,8 @@ def get_model(name):
     wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
     wrapper.image_size = image_size
 
+    breakpoint()
+
     return wrapper
 
 
@@ -466,11 +468,12 @@ def get_layers(name):
         # added in version 3
         layers += [f'encoder.stages.{i}' for i in range(4)]
     elif 'cvt-13' in name:
-        layers += ['cvt.encoder.stages.0.layers.0']
-        layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
-        layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
-        layers += ['layernorm']
-        # layers += ['classifier'] --> 'embedding' error
+        layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+        # layers += ['cvt.encoder.stages.0.layers.0']
+        # layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
+        # layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+        # layers += ['layernorm']
+        layers += ['classifier'] # --> 'embedding' error
     elif 'cvt-21' in name:
         # layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
         layers += ['cvt.encoder.stages.0.layers.0']
