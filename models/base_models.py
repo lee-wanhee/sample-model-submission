@@ -79,13 +79,13 @@ def get_model_list():
     # model_list = ['r3m_resnet50'] # ['r3m_resnet18', 'r3m_resnet34'] do not have public link
     # model_list = ['r3m_resnet50_custom']
     # model_list = ['r3m_resnet50_custom-ego4d']
-    # model_list = ['cvt_cvt-13_res224_in1k_trfmlayer']
-    # model_list = ['cvt_cvt-13_res224_in1k_convlayer']
-    # model_list = ['cvt_cvt-13-384-in1k']
+    # model_list = ['cvt_cvt-13_res224_in1k_trfmlayer'] # for sv5 test done
+    # model_list = ['cvt_cvt-13_res224_in1k_convlayer'] # for sv5 test done
+    # model_list = ['cvt_cvt-13-384-in1k'] 
     # model_list = ['cvt_cvt-13-384-in22k_finetuned-in1k']
     # model_list = ['levit_levit-128s-224-in1k']
     ## sv5
-    # model_list = ['cvt_cvt-21_res224_in1k_trfmlayer']
+    model_list = ['cvt_cvt-21_res224_in1k_trfmlayer']
     # model_list = ['cvt_cvt-21_res224_in1k_convlayer']
     # model_list = ['cvt_cvt-21_res384_in1k_trfmlayer']
     # model_list = ['cvt_cvt-21_res384_in1k_convlayer']
@@ -95,10 +95,11 @@ def get_model_list():
     # model_list = ['cvt_cvt-w24_res384_in22k_ft-in1k_convlayer']
     # model_list = ['levit_levit-256_res224_in1k_trfmlayer']
     # model_list = ['levit_levit-256_res224_in1k_convlayer']
-    model_list = ['levit_levit-384_res224_in1k_trfmlayer']
-    # model_list = ['levit_levit-384_res224_in1k_convlayer']
+    # model_list = ['levit_levit-384_res224_in1k_trfmlayer'] # for sv5 test done
+    # model_list = ['levit_levit-384_res224_in1k_convlayer'] # for sv5 test done
+    # model_list = ['maxvit_maxvit-tiny_res224_in1k_convlayer'] # for sv5 test done
     # # model_list = ['maxvit_maxvit-base_res384_in21k-ft-in1k_trfmlayer']
-    # model_list = ['maxvit_maxvit-base_res384_in21k-ft-in1k_convlayer']
+    # model_list = ['maxvit_maxvit-base_res384_in21k-ft-in1k_convlayer'] 
     # # model_list = ['maxvit_maxvit-base_res512_in21k-ft-in1k_trfmlayer']
     # model_list = ['maxvit_maxvit-base_res512_in21k-ft-in1k_convlayer']
     # # model_list = ['maxvit_maxvit-large_res384_in21k-ft-in1k_trfmlayer']
@@ -438,6 +439,11 @@ def get_model(name):
         _, model_specific_name, resolution, train_dataset, layer_type, sv = name.split('_')
         # https://huggingface.co/models?sort=modified&search=maxvit
         # ['maxvit_maxvit-base_res384_in21k-ft-in1k_trfmlayer']
+        if model_specific_name == 'maxvit-tiny':
+            if resolution == 'res224':
+                image_size = 224
+                if train_dataset == 'in1k':
+                    model_address = 'maxvit_tiny_tf_224.in1k'
         if model_specific_name == 'maxvit-base':
             if resolution == 'res384':
                 image_size = 384
@@ -616,56 +622,79 @@ def get_layers(name):
             layers += ['cvt.encoder.stages.0.layers.0']
             layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
             layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+            # layers += [f'cvt.encoder.stages.{i}' for i in range(3)] --> tuple error
             layers += ['layernorm']
         elif "convlayer" in name:
             layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+            layers += ['cvt.encoder.stages.1.embedding']
+            layers += ['cvt.encoder.stages.2.embedding']
             layers += ['classifier'] # --> 'embedding' error
     elif 'cvt-21' in name:
         if "trfmlayer" in name:
             layers += ['cvt.encoder.stages.0.layers.0']
             layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
             layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+            # layers += [f'cvt.encoder.stages.{i}' for i in range(3)]
             layers += ['layernorm']
         elif "convlayer" in name:
             layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+            layers += ['cvt.encoder.stages.1.embedding']
+            layers += ['cvt.encoder.stages.2.embedding']
             layers += ['classifier']
     elif 'cvt-w24' in name:
         if "trfmlayer" in name:
             layers += [f'cvt.encoder.stages.0.layers.{i}' for i in range(2)]
             layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
-            layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(20)]
+            layers += [f'cvt.encoder.stages.2.layers.{i*2}' for i in range(10)]
+            layers += [f'cvt.encoder.stages.2.layers.19']
+            # layers += [f'cvt.encoder.stages.{i}' for i in range(3)]
             layers += ['layernorm']
         elif "convlayer" in name:
             layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+            layers += ['cvt.encoder.stages.1.embedding']
+            layers += ['cvt.encoder.stages.2.embedding']
             layers += ['classifier']
     elif 'levit-128s' in name:
         if "trfmlayer" in name:
-            layers += ['levit.patch_embeddings']
             layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(6)]
             layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(8)]
             layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
             layers += [f'levit.encoder.stages.{i}' for i in range(3)]
         elif "convlayer" in name:
+            layers += ['levit.patch_embeddings'] # --> channel_x error
             layers += ['classifier']
     elif 'levit-256' in name:
         if "trfmlayer" in name:
-            layers += ['levit.patch_embeddings']
             layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(10)]
             layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(10)]
             layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
             layers += [f'levit.encoder.stages.{i}' for i in range(3)]
         elif "convlayer" in name:
+            layers += ['levit.patch_embeddings']
+            layers += [f'levit.patch_embeddings.activation_layer_{i+1}' for i in range(3)]
             layers += ['classifier']
     elif 'levit-384' in name:
         if "trfmlayer" in name:
-            layers += ['levit.patch_embeddings']
-            layers += [f'levit.patch_embeddings.activation_layer_{i+1}' for i in range(3)]
             layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(10)]
             layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(10)]
             layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
             layers += [f'levit.encoder.stages.{i}' for i in range(3)]
         elif "convlayer" in name:
+            layers += ['levit.patch_embeddings']
+            layers += [f'levit.patch_embeddings.activation_layer_{i+1}' for i in range(3)]
             layers += ['classifier']
+    elif 'maxvit-tiny' in name:
+        if "convlayer" in name:
+            layers += ['stem'] # conv
+            layers += ['stem.conv1', 'stem.norm1', 'stem.conv2']
+            layers += ['stages']
+            layers += [f'stages.0.blocks.{i}' for i in range(2)]
+            layers += [f'stages.1.blocks.{i}' for i in range(2)]
+            layers += [f'stages.2.blocks.{i}' for i in range(5)]
+            layers += [f'stages.3.blocks.{i}' for i in range(2)]
+            layers += ['norm']
+            layers += ['head'] # MLP Classifier
+            # all look like conv in the output?
     elif 'maxvit-base' in name:
         if "convlayer" in name:
             layers += ['stem'] # conv
@@ -675,7 +704,7 @@ def get_layers(name):
             layers += [f'stages.1.blocks.{i*2}' for i in range(3)]
             layers += ['stages.1.blocks.5']
             layers += [f'stages.2.blocks.{i*2}' for i in range(7)]
-            layers += ['stages.1.blocks.13']
+            layers += ['stages.2.blocks.13']
             layers += [f'stages.3.blocks.{i}' for i in range(2)]
             layers += ['norm']
             layers += ['head'] # MLP Classifier
@@ -689,7 +718,7 @@ def get_layers(name):
             layers += [f'stages.1.blocks.{i*2}' for i in range(3)] # 6
             layers += ['stages.1.blocks.5']
             layers += [f'stages.2.blocks.{i*2}' for i in range(7)] # 14
-            layers += ['stages.1.blocks.13']
+            layers += ['stages.2.blocks.13']
             layers += [f'stages.3.blocks.{i}' for i in range(2)] # 2
             layers += ['norm']
             layers += ['head'] # MLP Classifier
