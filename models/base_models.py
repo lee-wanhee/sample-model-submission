@@ -21,6 +21,7 @@ from transformers import LevitFeatureExtractor, LevitForImageClassificationWithT
 from huggingface_hub import hf_hub_download
 from PIL import Image
 import requests
+import timm
 
 import numpy as np
 import torch
@@ -40,8 +41,14 @@ def get_model_list():
     # 0: layer[1, 12) / 1: layer[0, 12) / 2: original model's preprocessor, change model_tools
     # 3: conv-like models, add layers to dinov1-resnet50
     # 4: redo. cvt
-    submit_version = 4
-    ## model list
+    # 5: conv and transformer separate. maxvit. prefix for submit version (sv).
+    submit_version = 'sv5'
+
+    ## name convention from sv5: 
+    # {model_general_name}_{model_specific_name}_{resolution}_{trainingset-finetuningset}_{transformer or conv}
+    # submit version will be automatically appended after the model name
+
+    ## model list:
     # model_list = ['mae_vitb16']
     # model_list = ['mae_vitl16']
     # model_list = ['dinov1_vits16'] 77.0%
@@ -62,18 +69,9 @@ def get_model_list():
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k400']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-k600']
     # model_list = ['timesformer_vitb16_videoinput_finetuned-ssv2']
-    model_list = ['cvt_cvt-13-224-in1k']
-    # model_list = ['cvt_cvt-21-224-in1k']
-    # model_list = ['cvt_cvt-13-384-in1k']
-    # model_list = ['cvt_cvt-21-384-in1k']
-    # model_list = ['cvt_cvt-13-384-in22k_finetuned-in1k']
-    # model_list = ['cvt_cvt-21-384-in22k_finetuned-in1k']
-    # model_list = ['cvt_cvt-w24-384-in22k_finetuned-in1k']
     # model_list = ['convnext_convnext-tiny-224']
     # model_list = ['convnext_convnext-base-224']
     # model_list = ['convnext_convnext-large-224']
-    # model_list = ['levit_levit-128s']
-    # model_list = ['levit_levit-256']
     # model_list = ['resnet50']
     # model_list = ['vc1_vc1b']
     # model_list = ['vc1_vc1l']
@@ -81,7 +79,32 @@ def get_model_list():
     # model_list = ['r3m_resnet50'] # ['r3m_resnet18', 'r3m_resnet34'] do not have public link
     # model_list = ['r3m_resnet50_custom']
     # model_list = ['r3m_resnet50_custom-ego4d']
-    
+    # model_list = ['cvt_cvt-13_res224_in1k_trfmlayer']
+    # model_list = ['cvt_cvt-13_res224_in1k_convlayer']
+    # model_list = ['cvt_cvt-13-384-in1k']
+    # model_list = ['cvt_cvt-13-384-in22k_finetuned-in1k']
+    # model_list = ['levit_levit-128s-224-in1k']
+    ## sv5
+    # model_list = ['cvt_cvt-21_res224_in1k_trfmlayer']
+    # model_list = ['cvt_cvt-21_res224_in1k_convlayer']
+    # model_list = ['cvt_cvt-21_res384_in1k_trfmlayer']
+    # model_list = ['cvt_cvt-21_res384_in1k_convlayer']
+    # model_list = ['cvt_cvt-21_res384_in22k-ft-in1k_trfmlayer']
+    # model_list = ['cvt_cvt-21_res384_in22k-ft-in1k_convlayer']
+    # model_list = ['cvt_cvt-w24_res384_in22k-ft-in1k_trfmlayer']
+    # model_list = ['cvt_cvt-w24_res384_in22k_ft-in1k_convlayer']
+    # model_list = ['levit_levit-256_res224_in1k_trfmlayer']
+    # model_list = ['levit_levit-256_res224_in1k_convlayer']
+    model_list = ['levit_levit-384_res224_in1k_trfmlayer']
+    # model_list = ['levit_levit-384_res224_in1k_convlayer']
+    # # model_list = ['maxvit_maxvit-base_res384_in21k-ft-in1k_trfmlayer']
+    # model_list = ['maxvit_maxvit-base_res384_in21k-ft-in1k_convlayer']
+    # # model_list = ['maxvit_maxvit-base_res512_in21k-ft-in1k_trfmlayer']
+    # model_list = ['maxvit_maxvit-base_res512_in21k-ft-in1k_convlayer']
+    # # model_list = ['maxvit_maxvit-large_res384_in21k-ft-in1k_trfmlayer']
+    # model_list = ['maxvit_maxvit-large_res384_in21k-ft-in1k_convlayer']
+    # # model_list = ['maxvit_maxvit-large_res512_in21k-ft-in1k_trfmlayer']
+    # model_list = ['maxvit_maxvit-large_res512_in21k-ft-in1k_convlayer']
     return [model+'_'+str(submit_version) for model in model_list]
     
     ## Category
@@ -238,36 +261,6 @@ def get_model(name):
             processor = functools.partial(timesformer_processor, return_tensors="pt", image_processor=image_processor)
         else:
             raise NotImplementedError(f'unknown model for getting model {name}')
-
-    elif model_name == 'cvt':
-        # https://huggingface.co/models?sort=downloads&search=cvt
-        if 'cvt-13-224-in1k' in name:
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-13')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-13')
-        elif 'cvt-21-224-in1k' in name:
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-21')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-21')
-        elif 'cvt-13-384-in1k' in name:
-            image_size = 384
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-21-384')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-21-384')
-        elif 'cvt-21-384-in1k' in name:
-            image_size = 384
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-21-384')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-21-384')
-        elif 'cvt-13-384-in22k' in name:
-            image_size = 384
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-13-384-22k')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-13-384-22k')
-        elif 'cvt-21-384-in22k' in name:
-            image_size = 384
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-21-384-22k')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-21-384-22k')
-        elif 'cvt-w24-384-in22k' in name:
-            image_size = 384
-            processor = AutoFeatureExtractor.from_pretrained('microsoft/cvt-w24-384-22k')
-            model = CvtForImageClassification.from_pretrained('microsoft/cvt-w24-384-22k')
-
     elif model_name == 'convnext':
         # https://huggingface.co/models?search=facebook/convnext
         if 'convnext-large-224' in name:
@@ -279,15 +272,6 @@ def get_model(name):
         elif 'convnext-tiny-224' in name:
             processor = ConvNextFeatureExtractor.from_pretrained("facebook/convnext-tiny-224")
             model = ConvNextForImageClassification.from_pretrained("facebook/convnext-tiny-224")
-
-    elif model_name == 'levit':
-        # https://huggingface.co/models?search=facebook/levit
-        if 'levit-128s' in name:
-            processor = LevitFeatureExtractor.from_pretrained('facebook/levit-128S')
-            model = LevitForImageClassificationWithTeacher.from_pretrained('facebook/levit-128S')
-        elif 'levit-256' in name:
-            processor = LevitFeatureExtractor.from_pretrained('facebook/levit-256')
-            model = LevitForImageClassificationWithTeacher.from_pretrained('facebook/levit-256')
 
     elif model_name == 'vc1':
         # https://github.com/facebookresearch/eai-vc/blob/main/tutorial/tutorial_vc.ipynb
@@ -398,14 +382,106 @@ def get_model(name):
 
         return wrapper
         
+
+    elif model_name == 'cvt':
+        _, model_specific_name, resolution, train_dataset, layer_type, sv = name.split('_')
+        # https://huggingface.co/models?sort=downloads&search=cvt
+        if model_specific_name == 'cvt-13':
+            if resolution == 'res224':
+                image_size = 224
+                if train_dataset == 'in1k':
+                    model_address = 'microsoft/cvt-13'
+                elif train_dataset == 'in21k-ft-in1k':
+                    pass
+            elif resolution == 'res384':
+                image_size = 384
+                if train_dataset == 'in1k':
+                    model_address = 'microsoft/cvt-13-384'
+                elif train_dataset == 'in21k-ft-in1k':
+                    model_address = 'microsoft/cvt-13-384-22k'
+
+        elif model_specific_name == 'cvt-21':
+            if resolution == 'res224':
+                image_size = 224
+                if train_dataset == 'in1k':
+                    model_address = 'microsoft/cvt-21'
+                elif train_dataset == 'in21k-ft-in1k':
+                    pass
+            elif resolution == 'res384':
+                image_size = 384
+                if train_dataset == 'in1k':
+                    model_address = 'microsoft/cvt-21-384'
+                elif train_dataset == 'in21k-ft-in1k':
+                    model_address = 'microsoft/cvt-21-384-22k'
+
+        elif model_specific_name == 'cvt-w24':
+            if resolution == 'res384':
+                image_size = 384
+                if train_dataset == 'in21k-ft-in1k':
+                    model_address = 'microsoft/cvt-w24-384-22k'
+
+        processor = AutoFeatureExtractor.from_pretrained(model_address)
+        model = CvtForImageClassification.from_pretrained(model_address)
+
+    elif model_name == 'levit':
+        # https://huggingface.co/models?search=facebook/levit
+        if 'levit-128s' in name:
+            model_address = 'facebook/levit-128S'
+        elif 'levit-256' in name:
+            model_address = 'facebook/levit-256'
+        elif 'levit-384' in name:
+            model_address = 'facebook/levit-384'
+        processor = LevitFeatureExtractor.from_pretrained(model_address)
+        model = LevitForImageClassificationWithTeacher.from_pretrained(model_address)
+
+    elif model_name == 'maxvit':
+        _, model_specific_name, resolution, train_dataset, layer_type, sv = name.split('_')
+        # https://huggingface.co/models?sort=modified&search=maxvit
+        # ['maxvit_maxvit-base_res384_in21k-ft-in1k_trfmlayer']
+        if model_specific_name == 'maxvit-base':
+            if resolution == 'res384':
+                image_size = 384
+                if train_dataset == 'in21k-ft-in1k':
+                    model_address = 'maxvit_base_tf_384.in21k_ft_in1k'
+            elif resolution == 'res512':
+                image_size = 512
+                if train_dataset == 'in21k-ft-in1k':
+                    model_address = 'maxvit_base_tf_512.in21k_ft_in1k'
+        elif model_specific_name == 'maxvit-large':
+            if resolution == 'res384':
+                image_size = 384
+                if train_dataset == 'in21k-ft-in1k':
+                    model_address = 'maxvit_large_tf_384.in21k_ft_in1k'
+            elif resolution == 'res512':
+                image_size = 512
+                if train_dataset == 'in21k-ft-in1k':
+                    model_address = 'maxvit_large_tf_512.in21k_ft_in1k'
+
+        model = timm.create_model(
+            model_address,
+            pretrained=True,
+            # features_only=True,
+        )
+        model = model.eval()
+
+        # get model specific transforms (normalization, resize)
+        data_config = timm.data.resolve_model_data_config(model)
+        transforms = timm.data.create_transform(**data_config, is_training=False)
+        processor = transforms
+        processor_mode = 'timm'
+
+        preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=image_size, processor_mode='timm')
+        wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
+        wrapper.image_size = image_size
+
+        return wrapper
+
     else:
         raise NotImplementedError(f'unknown model for getting model {name}')
 
     preprocessing = functools.partial(load_preprocess_images, processor=processor, image_size=image_size)
     wrapper = PytorchWrapper(identifier=name, model=model, preprocessing=preprocessing)
     wrapper.image_size = image_size
-
-    breakpoint()
 
     return wrapper
 
@@ -468,25 +544,6 @@ def get_layers(name):
         layers += [f'encoder.stages.3.layers.{i}' for i in range(3)]
         # added in version 3
         layers += [f'encoder.stages.{i}' for i in range(4)]
-    elif 'cvt-13' in name:
-        layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
-        # layers += ['cvt.encoder.stages.0.layers.0']
-        # layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
-        # layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
-        # layers += ['layernorm']
-        layers += ['classifier'] # --> 'embedding' error
-    elif 'cvt-21' in name:
-        # layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
-        layers += ['cvt.encoder.stages.0.layers.0']
-        layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
-        layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
-        layers += ['layernorm']
-    elif 'cvt-w24' in name:
-        # layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
-        layers += [f'cvt.encoder.stages.0.layers.{i}' for i in range(2)]
-        layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
-        layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(20)]
-        layers += ['layernorm']
     elif 'convnext-tiny-224' in name:
         layers += ['convnext.embeddings']
         layers += [f'convnext.encoder.stages.0.layers.{i}' for i in range(3)]
@@ -517,20 +574,6 @@ def get_layers(name):
         layers += [f'convnext.encoder.stages.{i}' for i in range(4)]
         layers += ['convnext.layernorm']
         layers += ['classifier']
-    elif 'levit-128s' in name:
-        layers += ['levit.patch_embeddings']
-        layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(6)]
-        layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(8)]
-        layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
-        layers += [f'levit.encoder.stages.{i}' for i in range(3)]
-        # layers += ['classifier', 'classifier_distill']
-    elif 'levit-256' in name:
-        layers += ['levit.patch_embeddings']
-        layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(10)]
-        layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(10)]
-        layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
-        layers += [f'levit.encoder.stages.{i}' for i in range(3)]
-        # layers += ['classifier', 'classifier_distill']
     elif 'vc1b' in name:
         layers += [f'blocks.{i}' for i in range(12)]
         layers += ['blocks']
@@ -546,27 +589,110 @@ def get_layers(name):
         layers += [f'convnet.layer3.{i}' for i in range(6)]
         layers += [f'convnet.layer4.{i}' for i in range(3)]
         layers += [f'convnet.layer{i+1}' for i in range(4)]
-    elif 'r3m_resnet50':
+    elif 'r3m_resnet50' in name:
         layers += ['convnet.maxpool', 'convnet.avgpool']
         layers += [f'convnet.layer1.{i}' for i in range(3)]
         layers += [f'convnet.layer2.{i}' for i in range(3)]
         layers += [f'convnet.layer3.{i}' for i in range(6)]
         layers += [f'convnet.layer4.{i}' for i in range(3)]
         layers += [f'convnet.layer{i+1}' for i in range(4)]
-    elif 'r3m_resnet34':
+    elif 'r3m_resnet34' in name:
         layers += ['convnet.maxpool', 'convnet.avgpool']
         layers += [f'convnet.layer1.{i}' for i in range(3)]
         layers += [f'convnet.layer2.{i}' for i in range(3)]
         layers += [f'convnet.layer3.{i}' for i in range(6)]
         layers += [f'convnet.layer4.{i}' for i in range(3)]
         layers += [f'convnet.layer{i+1}' for i in range(4)]
-    elif 'r3m_resnet18':
+    elif 'r3m_resnet18' in name:
         layers += ['convnet.maxpool', 'convnet.avgpool']
         layers += [f'convnet.layer1.{i}' for i in range(3)]
         layers += [f'convnet.layer2.{i}' for i in range(3)]
         layers += [f'convnet.layer3.{i}' for i in range(6)]
         layers += [f'convnet.layer4.{i}' for i in range(3)]
         layers += [f'convnet.layer{i+1}' for i in range(4)]
+
+    elif 'cvt-13' in name:
+        if "trfmlayer" in name:
+            layers += ['cvt.encoder.stages.0.layers.0']
+            layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
+            layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+            layers += ['layernorm']
+        elif "convlayer" in name:
+            layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+            layers += ['classifier'] # --> 'embedding' error
+    elif 'cvt-21' in name:
+        if "trfmlayer" in name:
+            layers += ['cvt.encoder.stages.0.layers.0']
+            layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
+            layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(10)]
+            layers += ['layernorm']
+        elif "convlayer" in name:
+            layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+            layers += ['classifier']
+    elif 'cvt-w24' in name:
+        if "trfmlayer" in name:
+            layers += [f'cvt.encoder.stages.0.layers.{i}' for i in range(2)]
+            layers += [f'cvt.encoder.stages.1.layers.{i}' for i in range(2)]
+            layers += [f'cvt.encoder.stages.2.layers.{i}' for i in range(20)]
+            layers += ['layernorm']
+        elif "convlayer" in name:
+            layers += ['cvt.encoder.stages.0.embedding'] # ? --> 'channel_x' error
+            layers += ['classifier']
+    elif 'levit-128s' in name:
+        if "trfmlayer" in name:
+            layers += ['levit.patch_embeddings']
+            layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(6)]
+            layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(8)]
+            layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
+            layers += [f'levit.encoder.stages.{i}' for i in range(3)]
+        elif "convlayer" in name:
+            layers += ['classifier']
+    elif 'levit-256' in name:
+        if "trfmlayer" in name:
+            layers += ['levit.patch_embeddings']
+            layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(10)]
+            layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(10)]
+            layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
+            layers += [f'levit.encoder.stages.{i}' for i in range(3)]
+        elif "convlayer" in name:
+            layers += ['classifier']
+    elif 'levit-384' in name:
+        if "trfmlayer" in name:
+            layers += ['levit.patch_embeddings']
+            layers += [f'levit.patch_embeddings.activation_layer_{i+1}' for i in range(3)]
+            layers += [f'levit.encoder.stages.0.layers.{i}' for i in range(10)]
+            layers += [f'levit.encoder.stages.1.layers.{i}' for i in range(10)]
+            layers += [f'levit.encoder.stages.2.layers.{i}' for i in range(8)]
+            layers += [f'levit.encoder.stages.{i}' for i in range(3)]
+        elif "convlayer" in name:
+            layers += ['classifier']
+    elif 'maxvit-base' in name:
+        if "convlayer" in name:
+            layers += ['stem'] # conv
+            layers += ['stem.conv1', 'stem.norm1', 'stem.conv2']
+            layers += ['stages']
+            layers += [f'stages.0.blocks.{i}' for i in range(2)]
+            layers += [f'stages.1.blocks.{i*2}' for i in range(3)]
+            layers += ['stages.1.blocks.5']
+            layers += [f'stages.2.blocks.{i*2}' for i in range(7)]
+            layers += ['stages.1.blocks.13']
+            layers += [f'stages.3.blocks.{i}' for i in range(2)]
+            layers += ['norm']
+            layers += ['head'] # MLP Classifier
+            # all look like conv in the output?
+    elif 'maxvit-large' in name:
+        if "convlayer" in name:
+            layers += ['stem']
+            layers += ['stem.conv1', 'stem.norm1', 'stem.conv2']
+            layers += ['stages']
+            layers += [f'stages.0.blocks.{i}' for i in range(2)] # 2
+            layers += [f'stages.1.blocks.{i*2}' for i in range(3)] # 6
+            layers += ['stages.1.blocks.5']
+            layers += [f'stages.2.blocks.{i*2}' for i in range(7)] # 14
+            layers += ['stages.1.blocks.13']
+            layers += [f'stages.3.blocks.{i}' for i in range(2)] # 2
+            layers += ['norm']
+            layers += ['head'] # MLP Classifier
     else:
         raise NotImplementedError(f'unknown model for getting layers {name}')
 
@@ -580,18 +706,24 @@ def get_bibtex(model_identifier):
     return ''
 
 
-def load_preprocess_images(image_filepaths, image_size, processor=None, **kwargs):
+def load_preprocess_images(image_filepaths, image_size, processor=None, processor_mode='return_tensors_pt', **kwargs):
     images = load_images(image_filepaths)
     # images = [<PIL.Image.Image image mode=RGB size=400x400 at 0x7F8654B2AC10>, ...]
     images = [image.resize((image_size, image_size)) for image in images]
     if processor is not None:
-        images = [processor(images=image, return_tensors="pt", **kwargs) for image in images]
-        if len(images[0].keys()) != 1:
-            raise NotImplementedError(f'unknown processor for getting model {processor}')
-        assert list(images[0].keys())[0] == 'pixel_values'
-        images = [image['pixel_values'] for image in images]
-        images = torch.cat(images)
-        images = images.cpu().numpy()
+        if processor_mode == 'return_tensors_pt':
+            images = [processor(images=image, return_tensors="pt", **kwargs) for image in images]
+            if len(images[0].keys()) != 1:
+                raise NotImplementedError(f'unknown processor for getting model {processor}')
+            assert list(images[0].keys())[0] == 'pixel_values'
+            images = [image['pixel_values'] for image in images]
+            images = torch.cat(images)
+            images = images.cpu().numpy()
+        elif processor_mode == 'timm':
+            images = [processor(image).unsqueeze(0) for image in images]
+            images = torch.cat(images)
+            images = images.cpu()
+            # images = images.cpu().numpy()
     else:
         images = preprocess_images(images, image_size=image_size, **kwargs)
     return images
